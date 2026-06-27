@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SnapLAN Test</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: #0f0f0f;
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
+input, button {
+    padding: 12px;
+    margin: 8px;
+    border-radius: 8px;
+    border: none;
+    width: 80%;
+    max-width: 400px;
+}
+
+button {
+    background: #4CAF50;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+#log {
+    margin-top: 20px;
+    text-align: left;
+    background: #1a1a1a;
+    padding: 10px;
+    border-radius: 10px;
+    height: 300px;
+    overflow-y: scroll;
+}
+</style>
+</head>
+
+<body>
+
+<h1>SnapLAN QR Test</h1>
+
+<input id="ip" placeholder="PC IP (e.g 192.168.2.2)" />
+<br>
+<canvas id="qr"></canvas>
+<div id="qrText"></div>
+<div id="reader" style="width:300px"></div>
+<button onclick="startScanner()">Scan QR</button>
+<button onclick="connect()">Connect</button>
+<button onclick="createSession()">Create Session (QR)</button>
+<button onclick="ping()">Ping</button>
+
+<div id="log"></div>
+
+<script>
+
+let ws = null;
+let sessionId = null;
+
+function log(msg) {
+    document.getElementById("log").innerHTML += "<div>" + msg + "</div>";
+}
+
+/* -------------------------
+   STEP 1: CREATE SESSION
+--------------------------*/
+async function createSession() {
+    const ip = document.getElementById("ip").value || "172.20.10.2";    
+    const res = await fetch(`https://${ip}:3000/create_session`);
+    const data = await res.json();
+
+    sessionId = data.session_id;
+
+    log("🟢 Session created: " + sessionId);
+    log("📱 QR DATA: " + data.qr_data);
+
+    const qrString = data.qr_data;
+    document.getElementById("qrText").innerText = qrString;
+
+    QRCode.toCanvas(document.getElementById("qr"), qrString, function (error) {
+        if (error) log("QR error: " + error);
+        else log("QR code generated successfully!");
+    });
+
+    // later: generate QR image here
+}
+
+/* -------------------------
+   STEP 2: CONNECT WS
+--------------------------*/
+function connect() {
+    const ip = document.getElementById("ip").value || "172.20.10.2";
+
+    ws = new WebSocket(`ws://${ip}:3000/ws`);
+
+    ws.onopen = async () => {
+
+        if (!sessionId) {
+            log("No session ID found. Creating a new session...");
+            return;
+        }
+
+        log("⚡ WebSocket connected");
+
+        ws.send(JSON.stringify({
+            type: "ClientHello",
+            data: {
+                device_name: "Browser",
+                session_id: sessionId
+            }
+        }));
+    };
+
+    ws.onmessage = (event) => {
+        log("RAW: " + event.data);
+
+        try {
+            const msg = JSON.parse(event.data);
+            log("TYPE: " + msg.type);
+
+            if (msg.data) {
+                log(JSON.stringify(msg.data));
+            }
+        } catch (e) {
+            log("PARSE ERROR");
+        }
+    };
+
+    ws.onerror = (err) => {
+        log("WS ERROR: " + err);
+    };
+}
+
+function startScanner() {
+    const reader = document.getElementById("reader");
+
+    const scanner = new Html5Qrcode("reader");
+
+    const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 }
+    };
+
+    Html5Qrcode.getCameras().then(devices => {
+
+        if (!devices || devices.length === 0) {
+            log("❌ No camera found");
+            return;
+        }
+
+        const cameraId = devices[0].id;
+
+        scanner.start(
+            cameraId,
+            config,
+            (decodedText) => {
+
+                log("📷 QR SCANNED: " + decodedText);
+
+                const session = decodedText.split("/").pop();
+                sessionId = session;
+
+                log("🔗 Joining session: " + sessionId);
+
+                scanner.stop(); // stop camera after scan
+
+                connect();
+            },
+            (errorMessage) => {
+                // silent scanning errors (normal)
+            }
+        ).catch(err => {
+            log("❌ Camera start error: " + err);
+        });
+
+    }).catch(err => {
+        log("❌ Camera access error: " + err);
+    });
+}
+/* -------------------------
+   STEP 3: TEST PING
+--------------------------*/
+function ping() {
+    if (!ws) return;
+
+    ws.send(JSON.stringify({
+        type: "Ping"
+    }));
+}
+
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+</body>
+</html>
