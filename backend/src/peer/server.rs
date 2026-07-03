@@ -9,7 +9,7 @@ pub async fn start_server(port: u16) {
 
     loop {
         let (mut socket, addr) = listener.accept().await.unwrap();
-        println!("Incoming coneection: {}", addr);
+        println!("Incoming connection: {}", addr); // FIX: was "coneection" (typo)
         tokio::spawn(async move {
             let mut buf = [0u8; 1024];
             let n = socket.read(&mut buf).await.unwrap();

@@ -1,3 +1,3 @@
 pub struct Connection {
-    pub peeri_id: String,
+    pub peer_id: String, 
 }
