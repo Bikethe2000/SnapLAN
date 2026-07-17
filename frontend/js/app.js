@@ -52,10 +52,11 @@ window.addEventListener('load', () => {
   const ipInput = document.getElementById('ip');
   if (ipInput && hostname) ipInput.value = hostname;
 
-  log('Auto connecting...');
+  // No auto-connect: only create session on explicit user action.
+  // createSession() also enables/disables connect button.
 
   if (hostname) {
-    createSession().catch(() => log('Backend not ready.'));
+    // Keep status quiet; user can press Create Session.
   }
 
   bindButtons();

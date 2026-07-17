@@ -30,18 +30,17 @@ export function renderPeers(peerList) {
         }
 
         card.onclick = () => connectToPeer(peer.id);
+
+        // Auto-start signaling when the peer cards render.
+        // This triggers Offer/Answer/ICE exchange (and DC creation) without requiring a manual click.
+        if (weKnowOurId && typeof state.myPeerId === 'string' && state.myPeerId.length > 0) {
+            connectToPeer(peer.id).catch((e) => log(`❌ connectToPeer failed: ${e?.message || e}`));
+        }
+
+
         card.innerHTML = `<b>${peer.name}</b><br><small>${peer.id}</small>`;
 
-        // Auto-connect to reduce manual clicks
-        if (isFresh && !state.peerConnections[peer.id]) {
-            if (!weKnowOurId) {
-                log('[renderPeers] myPeerId not known yet; skipping auto-connect');
-                return;
-            }
 
-            // Lexicographic tie-break
-            if (state.myPeerId < peer.id) connectToPeer(peer.id);
-        }
     });
 
     [...container.children].forEach(child => {
@@ -82,7 +81,12 @@ export function renderDiscovered(devices) {
             const ipInput = document.getElementById('ip');
             if (ipInput) ipInput.value = d.ip;
 
+            // Host/join session
             await createSession();
+
+            // Connect WS (then auto perform signaling by creating the peer)
+            // We only know the remote peer after websocket handshake, so signaling is kicked
+            // off once our WS gets myPeerId; see renderPeers() and peer_list handling.
             connectWs();
         };
 
@@ -103,15 +107,24 @@ export function startScanner() {
     Html5Qrcode.getCameras().then(devices => {
         const cam = devices[0];
 
+        // Prefer rear camera when available (avoid front camera default)
+        const rearCam = devices.find(d => (d.label || '').toLowerCase().includes('back') || (d.label || '').toLowerCase().includes('rear'));
+        const camToUse = rearCam || cam;
+
         scanner.start(
-            cam.id,
+            camToUse.id,
             { fps: 10, qrbox: 250 },
             (text) => {
                 log(`📷 QR: ${text}`);
                 state.sessionId = text.split('/').pop();
 
                 scanner.stop().catch(() => {});
-                connectWs();
+
+                // Joiner: enable WS connect button, but don't auto-connect.
+                const connectBtn = document.getElementById('connectBtn');
+                if (connectBtn) connectBtn.disabled = false;
+
+                // If session already exists, user will press Connect WebSocket.
             }
         );
     });

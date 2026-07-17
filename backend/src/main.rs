@@ -57,11 +57,11 @@ fn tls_paths() -> (PathBuf, PathBuf) {
     let cert_path = std::env::var("SNAPLAN_TLS_CERT")
 
         .map(PathBuf::from)
-        .unwrap_or_else(|_| manifest_dir.join("../frontend/192.168.2.5+2.pem"));
+        .unwrap_or_else(|_| manifest_dir.join("../frontend/192.168.2.7+2.pem"));
 
     let key_path = std::env::var("SNAPLAN_TLS_KEY")
         .map(PathBuf::from)
-        .unwrap_or_else(|_| manifest_dir.join("../frontend/192.168.2.5+2-key.pem"));
+        .unwrap_or_else(|_| manifest_dir.join("../frontend/192.168.2.7+2-key.pem"));
 
     (cert_path, key_path)
 }

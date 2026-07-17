@@ -1,0 +1,30 @@
+use serde::{
+    Deserialize,
+    Serialize,
+};
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+)]
+#[derive(Hash)]
+pub enum Capability {
+    Ble,
+    Mdns,
+    Broadcast,
+    QR,
+    TrustedPairing,
+    Quic,
+    WebRtc,
+    Tcp,
+    WifiDirect,
+    Encryption,
+    Resume,
+    Compression,
+    ParallelTransfer,
+}

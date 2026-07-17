@@ -22,7 +22,7 @@ export async function createSession() {
     const connectBtn = document.getElementById('connectBtn');
     if (connectBtn) connectBtn.disabled = false;
 
-    connectWs();
+    // Do not auto-connect WebSocket; user will connect via button.
     setStatus('Session ready');
 }
 
